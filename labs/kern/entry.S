@@ -56,7 +56,8 @@ _start:
 relocated:
 
 	# We are gonna make first call soon.
-	# Maybe it is time to put NULL to some register before making the first call?
+	# Ease backtracing (this can be used as a marker).
+	movl $0x0,%ebp
 	# Set the stack pointer
 	movl	$(bootstacktop),%esp
 
