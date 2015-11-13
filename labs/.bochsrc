@@ -76,3 +76,4 @@ clock: sync=realtime, time0=local
 # clock: sync=none, time0=946681200 # jan 1, 2000
 
 keyboard: serial_delay=10
+sound: waveoutdrv=dummy, waveout=none, waveindrv=dummy, wavein=none, midioutdrv=dummy, midiout=none
