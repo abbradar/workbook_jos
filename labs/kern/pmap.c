@@ -566,12 +566,24 @@ page_insert(pde_t *pgdir, struct Page *pp, void *va, int perm)
 // This function is only intended to set up the ``static'' mappings
 // above UTOP. As such, it should *not* change the pp_ref field on the
 // mapped pages.
-//
-// Hint: the TA solution uses pgdir_walk
 static void
 boot_map_segment(pde_t *pgdir, uintptr_t la, size_t size, physaddr_t pa, int perm)
 {
-	// Fill this function in
+	uintptr_t limit = size;
+	uintptr_t pos;
+
+	assert(pa == PTE_ADDR(pa));
+	assert(PTE_ADDR(perm) == 0);
+	// overflow checks
+	if (la + size < la) limit = ~la + 1;
+	if (pa + size < pa) limit = MIN(limit, ~pa + 1);
+
+	for (pos = 0; pos < limit; pos += PGSIZE, la += PGSIZE, pa += PGSIZE) {
+		pte_t *tentry = pgdir_walk(pgdir, (void *)la, 1);
+		assert(tentry);
+		assert(!(*tentry & PTE_P));
+		*tentry = pa | PTE_P | perm;
+	}
 }
 
 //
