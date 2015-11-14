@@ -413,22 +413,28 @@ check_va2pa(pde_t *pgdir, uintptr_t va)
 void
 page_init(void)
 {
-	// The example code here marks all pages as free.
-	// However this is not truly the case.  What memory is free?
-	//  1) Mark page 0 as in use.
-	//     This way we preserve the real-mode IDT and BIOS structures
-	//     in case we ever need them.  (Currently we don't, but...)
-	//  2) Mark the rest of base memory as free.
-	//  3) Then comes the IO hole [IOPHYSMEM, EXTPHYSMEM).
-	//     Mark it as in use so that it can never be allocated.      
-	//  4) Then extended memory [EXTPHYSMEM, ...).
-	//     Some of it is in use, some is free. Where is the kernel?
-	//     Which pages are used for page tables and other data structures?
-	//
-	// Change the code to reflect this.
 	int i;
+	int firstpage;
 	LIST_INIT(&page_free_list);
-	for (i = 0; i < npage; i++) {
+
+	// First page
+	pages[0].pp_ref = 1;
+	// Base memory
+	for (i = 1; i < PPN(IOPHYSMEM); i++) {
+		pages[i].pp_ref = 0;
+		LIST_INSERT_HEAD(&page_free_list, &pages[i], pp_link);
+	}
+	// IO hole
+	for (i = PPN(IOPHYSMEM); i < PPN(EXTPHYSMEM); i++) {
+		pages[i].pp_ref = 1;
+	}
+	// Kernel memory
+	firstpage = PPN(boot_freemem - KERNBASE) + ((uint32_t) boot_freemem % PGSIZE != 0);
+	for (i = PPN(EXTPHYSMEM); i < firstpage; i++) {
+		pages[i].pp_ref = 1;
+	}
+	// Free memory
+	for (i = firstpage; i < npage; i++) {
 		pages[i].pp_ref = 0;
 		LIST_INSERT_HEAD(&page_free_list, &pages[i], pp_link);
 	}
@@ -457,13 +463,14 @@ page_initpp(struct Page *pp)
 //   0 -- on success
 //   -E_NO_MEM -- otherwise 
 //
-// Hint: use LIST_FIRST, LIST_REMOVE, and page_initpp
-// Hint: pp_ref should not be incremented 
 int
 page_alloc(struct Page **pp_store)
 {
-	// Fill this function in
-	return -E_NO_MEM;
+	struct Page* page = LIST_FIRST(&page_free_list);
+	if (page == NULL) return -E_NO_MEM;
+	*pp_store = page;
+	LIST_REMOVE(page, pp_link);
+	return 0;
 }
 
 //
@@ -473,7 +480,7 @@ page_alloc(struct Page **pp_store)
 void
 page_free(struct Page *pp)
 {
-	// Fill this function in
+	LIST_INSERT_HEAD(&page_free_list, pp, pp_link);
 }
 
 //
