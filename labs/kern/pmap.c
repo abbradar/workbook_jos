@@ -540,21 +540,31 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 //     into 'pgdir'.
 //   - pp->pp_ref should be incremented if the insertion succeeds.
 //   - The TLB must be invalidated if a page was formerly present at 'va'.
-//
-// Corner-case hint: Make sure to consider what happens when the same 
-// pp is re-inserted at the same virtual address in the same pgdir.
-//
-// RETURNS: 
-//   0 on success
-//   -E_NO_MEM, if page table couldn't be allocated
-//
-// Hint: The TA solution is implemented using pgdir_walk, page_remove,
-// and page2pa.
-//
 int
 page_insert(pde_t *pgdir, struct Page *pp, void *va, int perm) 
 {
-	// Fill this function in
+	pte_t *tentry;
+	physaddr_t pa;
+
+	assert(PTE_ADDR(perm) == 0);
+
+  tentry = pgdir_walk(pgdir, va, 1);
+	if (tentry == NULL) {
+		return -E_NO_MEM;
+	}
+  pa = page2pa(pp);
+
+	if (*tentry & PTE_P) {
+		// If the same page is re-inserted
+		if (PTE_ADDR(*tentry) == pa) {
+      *tentry = pa | PTE_P | perm;
+      return 0;
+    }
+		page_remove(pgdir, va);
+	}
+
+	*tentry = pa | PTE_P | perm;
+	pp->pp_ref++;
 	return 0;
 }
 
@@ -593,14 +603,14 @@ boot_map_segment(pde_t *pgdir, uintptr_t la, size_t size, physaddr_t pa, int per
 // but should not be used by other callers.
 //
 // Return NULL if there is no page mapped at va.
-//
-// Hint: the TA solution uses pgdir_walk and pa2page.
-//
 struct Page *
 page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 {
-	// Fill this function in
-	return NULL;
+	pte_t *tentry = pgdir_walk(pgdir, va, 0);
+	if (tentry == NULL) return NULL;
+	if (!(*tentry & PTE_P)) return NULL;
+	if (pte_store != NULL) *pte_store = tentry;
+	return pa2page(PTE_ADDR(*tentry));
 }
 
 //
@@ -621,7 +631,12 @@ page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 void
 page_remove(pde_t *pgdir, void *va)
 {
-	// Fill this function in
+	pte_t *tentry;
+	struct Page *page = page_lookup(pgdir, va, &tentry);
+	if (page == NULL) return;
+	*tentry &= ~PTE_P;
+	tlb_invalidate(pgdir, va);
+	page_decref(page);
 }
 
 //
