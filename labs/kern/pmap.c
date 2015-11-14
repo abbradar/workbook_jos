@@ -505,18 +505,28 @@ page_decref(struct Page* pp)
 //    - pgdir_walk sets pp_ref to 1 for the new page table.
 //    - pgdir_walk clears the new page table.
 //    - Finally, pgdir_walk returns a pointer into the new page table.
-//
-// Hint: you can turn a Page * into the physical address of the
-// page it refers to with page2pa() from kern/pmap.h.
-//
-// Hint 2: the x86 MMU checks permission bits in both the page directory
-// and the page table, so it's safe to leave permissions in the page
-// more permissive than strictly necessary.
 pte_t *
 pgdir_walk(pde_t *pgdir, const void *va, int create)
 {
-	// Fill this function in
-	return NULL;
+	pde_t *dentry = pgdir + PDX(va);
+	pte_t *pgtbl;
+	struct Page *page;
+
+	if (*dentry & PTE_P) {
+		pgtbl = (pte_t *)KADDR(PTE_ADDR(*dentry));
+	} else if (create) {
+		if (page_alloc(&page)) {
+			return NULL;
+		}
+		page->pp_ref = 1;
+    pgtbl = page2kva(page);
+		memset(pgtbl, 0, PGSIZE);
+		*dentry = page2pa(page) | PTE_P | PTE_W | PTE_U;
+	} else {
+		return NULL;
+	}
+
+	return pgtbl + PTX(va);
 }
 
 //
