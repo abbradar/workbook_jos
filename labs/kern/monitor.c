@@ -25,6 +25,7 @@ struct Command {
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
+	{ "backtrace", "Display current stack trace", mon_backtrace },
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
@@ -60,7 +61,49 @@ mon_kerninfo(int argc, char **argv, struct Trapframe *tf)
 int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
-	// Your code here.
+	void *ebp, *eip;
+	uint16_t instr;
+	unsigned args_sz;
+	unsigned i;
+	int args_sz_found;
+
+	ebp = (void *)read_ebp();
+	do {
+		eip = *(void **)(ebp + sizeof(void *));
+
+		// Try to find out arguments size through opcodes decoding.
+		// Very fragile but works in practice!
+		instr = *(uint16_t *)eip;
+		// add esp, byte 42
+		if (instr == 0xc483) {
+			args_sz = *(uint8_t *)(eip + 2);
+			args_sz_found = 1;
+		}
+		// add esp, dword 42
+		else if (instr == 0xc481) {
+			args_sz = *(uint32_t *)(eip + 2);
+			args_sz_found = 1;
+		}
+		// guessing failed, fallback to default size
+		else {
+			args_sz = 5 * sizeof(uint32_t);
+			args_sz_found = 0;
+		}
+
+		cprintf("ebp %08x eip %08x args ", ebp, eip);
+		if (args_sz_found) {
+			cprintf("(size %u)", args_sz);
+		} else {
+			cprintf("(unknown size or void)");
+		}
+		// we suppose that all arguments are dwords
+		for (i = 0; i < args_sz / sizeof(uint32_t); ++i) {
+			cprintf(" %08x", *(uint32_t *)(ebp + 2 * sizeof(void *) + i * sizeof(uint32_t)));
+		}
+		cprintf("\n");
+
+		ebp = *(void **)(ebp);
+	} while (ebp != NULL);
 	return 0;
 }
 

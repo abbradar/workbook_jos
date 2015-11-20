@@ -57,7 +57,8 @@ _start:
 relocated:
 
 	# We are gonna make first call soon.
-	# Maybe it is time to put NULL to some register before making the first call?
+	# Ease backtracing (this can be used as a marker).
+	movl $0x0,%ebp
 
     # Leave a few words on the stack for the user trap frame
     movl    $(bootstacktop-SIZEOF_STRUCT_TRAPFRAME),%esp
