@@ -95,6 +95,7 @@ env_setup_vm(struct Env *e)
 {
 	int i, r;
 	struct Page *p = NULL;
+	pde_t *pde;
 
 	// Allocate a page for the page directory
 	if ((r = page_alloc(&p)) < 0)
@@ -116,8 +117,12 @@ env_setup_vm(struct Env *e)
 	//	physical pages mapped only above UTOP, but env_pgdir
 	//	is an exception -- you need to increment env_pgdir's
 	//	pp_ref for env_free to work correctly.
-
-	// LAB 3: Your code here.
+	p->pp_ref = 1;
+	pde = page2kva(p);
+	memset(pde, 0, PDX(UTOP) * sizeof(pde_t));
+	memmove(pde + PDX(UTOP), boot_pgdir + PDX(UTOP), (NPDENTRIES - PDX(UTOP)) * sizeof(pde_t));
+	e->env_pgdir = pde;
+	e->env_cr3 = page2pa(p);
 
 	// VPT and UVPT map the env's own page table, with
 	// different permissions.
