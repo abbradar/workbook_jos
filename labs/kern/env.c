@@ -269,12 +269,51 @@ load_icode(struct Env *e, uint8_t *binary, size_t size)
 	//  to make sure that the environment starts executing there.
 	//  What?  (See env_run() and env_pop_tf() below.)
 
-	// LAB 3: Your code here.
+	struct Elf *elfhdr = (struct Elf *)binary;
+	int i;
+	uint32_t old_cr3;
+
+	if (elfhdr->e_magic != ELF_MAGIC) panic("invalid ELF header of user program");
+	if (elfhdr->e_phoff + elfhdr->e_phnum > size) panic("elf headers overflow elf size");
+
+	// get into environment' paging setup
+	old_cr3 = rcr3();
+	for (i = 0; i < elfhdr->e_phnum; i++) {
+		struct Proghdr *ph = (struct Proghdr *)((void *)elfhdr + elfhdr->e_phoff) + i;
+		int misalign;
+		int pos;
+
+		if (ph->p_type != ELF_PROG_LOAD) continue;
+		if (ph->p_offset + ph->p_filesz > size) panic("elf section overflows elf size");
+		segment_alloc(e, (void *)ph->p_va, ph->p_memsz);
+		lcr3(e->env_cr3);
+
+		// just to be safe
+		memset((void *)ROUNDDOWN(ph->p_va, PGSIZE), 0, ph->p_va % PGSIZE);
+		// copy and clear memory as requested
+		memmove((void *)ph->p_va, binary + ph->p_offset, ph->p_filesz);
+		memset((void *)ph->p_va + ph->p_filesz, 0, ph->p_memsz - ph->p_filesz);
+		// safety, again
+		memset((void *)ph->p_va + ph->p_memsz, 0, ROUNDUP(ph->p_va + ph->p_memsz, PGSIZE) - ph->p_va - ph->p_memsz);
+	}
+	// return back
+	lcr3(old_cr3);
 
 	// Now map one page for the program's initial stack
 	// at virtual address USTACKTOP - PGSIZE.
+	{
+		pte_t *pte = pgdir_walk(e->env_pgdir, (void *)USTACKTOP - PGSIZE, 1);
+		struct Page *page;
+		if (pte == NULL) panic("cannot allocate a page table for program stack");
+		if (*pte & PTE_P) panic("stack is already allocated by elf");
+		if (page_alloc(&page)) panic("cannot allocate a page for program stack");
+		*pte = page2pa(page) | PTE_P | PTE_W | PTE_U;
+		page->pp_ref = 1;
+		memset(page2kva(page), 0, PGSIZE);
+	}
 
-	// LAB 3: Your code here.
+	// set entry point
+	e->env_tf.tf_eip = elfhdr->e_entry;
 }
 
 //
