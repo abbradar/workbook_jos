@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 # Copyright 2003 Bryan Ford
 # Distributed under the GNU General Public License.
 #
