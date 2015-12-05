@@ -693,8 +693,12 @@ static uintptr_t user_mem_check_addr;
 int
 user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
-	// LAB 3: Your code here. 
-
+	const void* addr = va;
+	assert(PTE_ADDR(perm) == 0);
+	for (; addr < va + len; va += PGSIZE) {
+		pte_t *tentry = pgdir_walk(curenv->env_pgdir, addr, 0);
+		if ((*tentry | perm) != *tentry) return -E_FAULT;
+	};
 	return 0;
 }
 
