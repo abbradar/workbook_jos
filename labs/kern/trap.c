@@ -62,8 +62,29 @@ void
 idt_init(void)
 {
 	extern struct Segdesc gdt[];
-	
-	// LAB 3: Your code here.
+
+	SETGATE(idt[0], 0, GD_KT, inthandle_divide, 0);
+	SETGATE(idt[1], 0, GD_KT, inthandle_debug, 0);
+	SETGATE(idt[2], 0, GD_KT, inthandle_nmi, 0);
+	SETGATE(idt[3], 0, GD_KT, inthandle_brkpt, 0);
+	SETGATE(idt[4], 0, GD_KT, inthandle_oflow, 0);
+	SETGATE(idt[5], 0, GD_KT, inthandle_bound, 0);
+	SETGATE(idt[6], 0, GD_KT, inthandle_illop, 0);
+	SETGATE(idt[7], 0, GD_KT, inthandle_device, 0);
+	SETGATE(idt[8], 0, GD_KT, inthandle_dblflt, 0);
+
+	SETGATE(idt[10], 0, GD_KT, inthandle_tss, 0);
+	SETGATE(idt[11], 0, GD_KT, inthandle_segnp, 0);
+	SETGATE(idt[12], 0, GD_KT, inthandle_stack, 0);
+	SETGATE(idt[13], 0, GD_KT, inthandle_gpflt, 0);
+	SETGATE(idt[14], 0, GD_KT, inthandle_pgflt, 0);
+
+	SETGATE(idt[16], 0, GD_KT, inthandle_fperr, 0);
+	SETGATE(idt[17], 0, GD_KT, inthandle_align, 0);
+	SETGATE(idt[18], 0, GD_KT, inthandle_mchk, 0);
+	SETGATE(idt[19], 0, GD_KT, inthandle_simderr, 0);
+
+	SETGATE(idt[48], 0, GD_KT, inthandle_syscall, 3);
 
 	// Setup a TSS so that we get the right stack
 	// when we trap to the kernel.

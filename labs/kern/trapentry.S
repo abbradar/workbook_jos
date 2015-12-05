@@ -38,13 +38,36 @@
 
 .text
 
-/*
- * Lab 3: Your code here for generating entry points for the different traps.
- */
+// See http://www.read.seas.harvard.edu/~kohler/class/aosref/i386/s09_10.htm
+TRAPHANDLER_NOEC(inthandle_divide, 0)
+TRAPHANDLER_NOEC(inthandle_debug, 1)
+TRAPHANDLER_NOEC(inthandle_nmi, 2)
+TRAPHANDLER_NOEC(inthandle_brkpt, 3)
+TRAPHANDLER_NOEC(inthandle_oflow, 4)
+TRAPHANDLER_NOEC(inthandle_bound, 5)
+TRAPHANDLER_NOEC(inthandle_illop, 6)
+TRAPHANDLER_NOEC(inthandle_device, 7)
+TRAPHANDLER(inthandle_dblflt, 8)
 
+TRAPHANDLER(inthandle_tss, 10)
+TRAPHANDLER(inthandle_segnp, 11)
+TRAPHANDLER(inthandle_stack, 12)
+TRAPHANDLER(inthandle_gpflt, 13)
+TRAPHANDLER(inthandle_pgflt, 14)
 
+TRAPHANDLER_NOEC(inthandle_fperr, 16)
+TRAPHANDLER_NOEC(inthandle_align, 17)
+TRAPHANDLER_NOEC(inthandle_mchk, 18)
+TRAPHANDLER_NOEC(inthandle_simderr, 19)
 
-/*
- * Lab 3: Your code here for _alltraps
- */
-	
+TRAPHANDLER_NOEC(inthandle_syscall, 48)
+
+_alltraps:
+  pushl %ds
+  pushl %es
+  pusha
+  mov $GD_KD, %ax
+  mov %ax, %ds
+  mov %ax, %es
+  pushl %esp
+  call trap
