@@ -17,8 +17,13 @@ sched_yield(void)
 	// is runnable.
 	// But never choose envs[0], the idle environment,
 	// unless NOTHING else is runnable.
-
-	// LAB 4: Your code here.
+	int fpid = curenv != NULL ? curenv->env_id : 0;
+	int pid = curenv != NULL ? (curenv->env_id + 1) % NENV : 1;
+	for (; pid != fpid; pid = (pid + 1) % NENV) {
+		if (pid == 0) continue;
+		if (envs[pid].env_status == ENV_RUNNABLE)
+			env_run(&envs[pid]);
+	}
 
 	// Run the special idle environment when nothing else is runnable.
 	if (envs[0].env_status == ENV_RUNNABLE)
