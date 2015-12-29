@@ -537,7 +537,7 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 			return NULL;
 		}
 		page->pp_ref = 1;
-    pgtbl = page2kva(page);
+		pgtbl = page2kva(page);
 		memset(pgtbl, 0, PGSIZE);
 		*dentry = page2pa(page) | PTE_P | PTE_W | PTE_U;
 	} else {
@@ -566,19 +566,19 @@ page_insert(pde_t *pgdir, struct Page *pp, void *va, int perm)
 
 	assert(PTE_ADDR(perm) == 0);
 
-  tentry = pgdir_walk(pgdir, va, 1);
+	tentry = pgdir_walk(pgdir, va, 1);
 	if (tentry == NULL) {
 		return -E_NO_MEM;
 	}
-  pa = page2pa(pp);
+	pa = page2pa(pp);
 
 	if (*tentry & PTE_P) {
 		// If the same page is re-inserted
 		if (PTE_ADDR(*tentry) == pa) {
 			*tentry = pa | PTE_P | perm;
 			tlb_invalidate(pgdir, va);
-      return 0;
-    }
+			return 0;
+		}
 		page_remove(pgdir, va);
 	}
 
