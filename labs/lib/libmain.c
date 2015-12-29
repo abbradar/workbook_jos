@@ -12,7 +12,7 @@ void
 libmain(int argc, char **argv)
 {
 	// set env to point at our env structure in envs[].
-	env = (struct Env *)(UENVS + ENVX(sys_getenvid()));
+	env = envs + ENVX(sys_getenvid());
 
 	// save the name of the program so that panic() can use it
 	if (argc > 0)

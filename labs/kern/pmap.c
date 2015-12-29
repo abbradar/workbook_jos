@@ -575,7 +575,8 @@ page_insert(pde_t *pgdir, struct Page *pp, void *va, int perm)
 	if (*tentry & PTE_P) {
 		// If the same page is re-inserted
 		if (PTE_ADDR(*tentry) == pa) {
-      *tentry = pa | PTE_P | perm;
+			*tentry = pa | PTE_P | perm;
+			tlb_invalidate(pgdir, va);
       return 0;
     }
 		page_remove(pgdir, va);
@@ -697,7 +698,10 @@ user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 	assert(PTE_ADDR(perm) == 0);
 	for (; addr < va + len; va += PGSIZE) {
 		pte_t *tentry = pgdir_walk(curenv->env_pgdir, addr, 0);
-		if ((*tentry | perm) != *tentry) return -E_FAULT;
+		if ((tentry == NULL) || (*tentry | perm | PTE_P) != *tentry) {
+			user_mem_check_addr = (uintptr_t)addr;
+			return -E_FAULT;
+		}
 	};
 	return 0;
 }

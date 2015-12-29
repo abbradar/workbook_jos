@@ -70,4 +70,6 @@ _alltraps:
   mov %ax, %ds
   mov %ax, %es
   pushl %esp
+  // fix backtrace
+  mov $0, %ebp
   call trap

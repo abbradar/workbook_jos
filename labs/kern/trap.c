@@ -236,7 +236,42 @@ page_fault_handler(struct Trapframe *tf)
 	//   To change what the user environment runs, modify 'curenv->env_tf'
 	//   (the 'tf' variable points at 'curenv->env_tf').
 
-	// LAB 4: Your code here.
+	cprintf("eip %08x esp %08x\n", tf->tf_eip, tf->tf_esp);
+	if (curenv->env_pgfault_upcall != NULL) {
+		void *stack_top;
+
+		if (tf->tf_esp > USTACKTOP) {
+			// Nested page fault; handle it! Leave place for ret address.
+			cprintf("nested page fault!\n");
+			stack_top = (void *)(tf->tf_esp - sizeof(uint32_t));
+		} else {
+			stack_top = (void *)UXSTACKTOP;
+		}
+		stack_top -= sizeof(struct UTrapframe);
+		// If we are within bounds...
+		if (stack_top > (void *)USTACKTOP && stack_top < (void *)UXSTACKTOP) {
+			struct UTrapframe *utf;
+
+			user_mem_assert(curenv, stack_top, sizeof(struct UTrapframe), PTE_W);
+			utf = stack_top;
+			utf->utf_fault_va = fault_va;
+			utf->utf_err = tf->tf_err;
+			utf->utf_regs = tf->tf_regs;
+			utf->utf_eip = tf->tf_eip;
+			utf->utf_eflags = tf->tf_eflags;
+			utf->utf_esp = tf->tf_esp;
+			// Set esp/eip
+			tf->tf_esp = (uint32_t)stack_top;
+			tf->tf_eip = (uint32_t)curenv->env_pgfault_upcall;
+			// Run the thing!
+			env_run(curenv);
+		} else {
+			cprintf("[%08x] user fault with user handler stack overflow va %08x ip %08x\n",
+							curenv->env_id, fault_va, tf->tf_eip);
+			print_trapframe(tf);
+			env_destroy(curenv);
+		}
+	}
 
 	// Destroy the environment that caused the fault.
 	cprintf("[%08x] user fault va %08x ip %08x\n",
